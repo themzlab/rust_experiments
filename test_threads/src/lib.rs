@@ -17,11 +17,14 @@ impl TestThreads {
     fn new(name: String) -> Self {
         println!("Thread {:} has been started", name);
         let my_name = name.to_string();
+        // create the Thread, also pass ownership of my_name into it
         let _t: JoinHandle<Self> = thread::spawn(move || {
-            println!{"started new thread"};
+            println!{"started new thread named {:}", my_name};
             // do other initialization I guess
+            let mut counter: i32 = 0;
             loop {
-                println!("Hello from {:},a Rust thread!", my_name);
+                counter = counter + 1;
+                println!("Hello from {:},a Rust thread! loop {:}", my_name, counter);
                 thread::sleep(Duration::from_secs(1));
             }
         });
