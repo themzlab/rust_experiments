@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use std::thread;
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
 // use pyo3::{wrap_pyfunction, };
 
@@ -16,12 +16,17 @@ impl TestThreads {
     #[new]
     fn new(name: String) -> Self {
         println!("Thread {:} has been started", name);
-        let _t = thread::spawn(move || loop {
+        let _t: JoinHandle<Self> = thread::spawn(move || loop {
             println!("Hello from Rust thread!");
             thread::sleep(Duration::from_secs(1));
         });
 
         TestThreads {name}
+    }
+
+    fn test(&self) {
+        // self.name = "hi mark".to_string();
+        println!("{:}", self.name);
     }
 }
 
