@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import time
 from test_threads import TestThreads
 m = TestThreads("my_test")
