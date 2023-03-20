@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import time
 from adc_module import AdcModule
 m = AdcModule("my_test")
