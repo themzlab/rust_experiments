@@ -10,13 +10,15 @@ use rppal::spi::{Bus, Mode, Segment, SlaveSelect, Spi};
 struct AdcModule {
     // #[pyo3(get)]
     name: String,
+    offset_adc: i32,
+    divisor_adc: f32,
 }
 
 
 #[pymethods]
 impl AdcModule {
     #[new]
-    fn new(name: String) -> Self {
+    fn new(name: String, offset_adc: i32, divisor_adc: f32) -> Self {
         println!("Thread {:} has been started", name);
 
         let _t: JoinHandle<Self> = thread::spawn(move || {
@@ -29,19 +31,19 @@ impl AdcModule {
         }
         );
 
-        AdcModule {name}
+        AdcModule {name, offset_adc, divisor_adc}
     }
 
     fn begin_thread(&self) {
-        println!("MY beginning thread{:}", self.name);
+        eprintln!("MY beginning thread{:} divisor {:.3}", self.name, self.divisor_adc);
         let my_name: String = self.name.to_string();
         let spi: Spi = Spi::new(Bus::Spi0, SlaveSelect::Ss0, 100_000, Mode::Mode0).unwrap();
-
+        let divisor_adc: f32 = self.divisor_adc;
+        let offset_adc: i32 = self.offset_adc;
         // create the Thread, also pass ownership of my_name into it
         let _t: JoinHandle<Self> = thread::spawn(move || {
-            const OFFSET_ADC: i32 = 0;
-            const DIVISOR_ADC: f32 = 100.0;
-            println!{"LATER, started new thread named {:}", my_name};
+    
+            eprintln!{"LATER, started new thread named {:}", my_name};
             // do other initialization I guess
             let mut counter: i32 = 0;
             let mut read_buffer: [u8; 2] = [0u8; 2]; // the spi read will be according to the size of the buffer
@@ -51,12 +53,12 @@ impl AdcModule {
                 ]).unwrap();
                 let _output = u16::from_be_bytes(read_buffer);
                 let mut output = _output as i32;
-                output = output-OFFSET_ADC;
+                output -= offset_adc;
                 let mut torque =output as f32;
-                torque = torque / DIVISOR_ADC;
+                torque /= divisor_adc;
                 //
-                counter = counter + 1;
-                println!("---->{:},a Rust thread! loop {:} value {:.3}", my_name, counter, torque);
+                counter += 1;
+                eprintln!("---->{:},a Rust thread! loop {:} value {:.3}", my_name, counter, torque);
                 thread::sleep(Duration::from_secs(1));
             }
         });
@@ -64,16 +66,16 @@ impl AdcModule {
     }
 
     fn begin_reading(&self) {
-        println!("begin_reading{:}", self.name);
+        eprintln!("begin_reading{:}", self.name);
         let my_name = self.name.to_string();
         // create the Thread, also pass ownership of my_name into it
         let _t: JoinHandle<Self> = thread::spawn(move || {
-            println!{"inside the new thread, begin_reading {:}", my_name};
+            eprintln!{"inside the new thread, begin_reading {:}", my_name};
             // do other initialization I guess
             let mut counter: i32 = 0;
             loop {
                 counter = counter + 1;
-                println!("---->{:},a Test thread; begin_reading {:}", my_name, counter);
+                eprintln!("---->{:},a Test thread; begin_reading {:}", my_name, counter);
                 thread::sleep(Duration::from_millis(500));
             }
         });
