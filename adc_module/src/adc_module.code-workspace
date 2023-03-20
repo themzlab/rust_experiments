@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../test_adc/src"
+		},
+		{
+			"path": "../../test_threads/src"
+		},
+	],
+	"settings": {}
+}
