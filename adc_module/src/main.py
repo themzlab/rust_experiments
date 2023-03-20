@@ -2,6 +2,7 @@
 import time
 from adc_module import AdcModule
 m = AdcModule("my_test", 35000, 101.0)
+print(m.name)
 m.begin_reading()
 try:
     m.begin_thread()

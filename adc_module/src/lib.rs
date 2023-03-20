@@ -8,7 +8,7 @@ use rppal::spi::{Bus, Mode, Segment, SlaveSelect, Spi};
 
 #[pyclass]
 struct AdcModule {
-    // #[pyo3(get)]
+    #[pyo3(get)]
     name: String,
     offset_adc: i32,
     divisor_adc: f32,
@@ -19,7 +19,7 @@ struct AdcModule {
 impl AdcModule {
     #[new]
     fn new(name: String, offset_adc: i32, divisor_adc: f32) -> Self {
-        println!("Thread {:} has been started", name);
+        eprintln!("Thread {:} has been started", name);
 
         let _t: JoinHandle<Self> = thread::spawn(move || {
             eprintln!("created the spi interface");
@@ -74,7 +74,7 @@ impl AdcModule {
             // do other initialization I guess
             let mut counter: i32 = 0;
             loop {
-                counter = counter + 1;
+                counter += 1;
                 eprintln!("---->{:},a Test thread; begin_reading {:}", my_name, counter);
                 thread::sleep(Duration::from_millis(500));
             }
