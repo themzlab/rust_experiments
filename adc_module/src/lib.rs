@@ -24,7 +24,7 @@ impl AdcModule {
     
             loop {
                 println!("Hello from Rust thread!");
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_secs(5));
             }
         }
         );
@@ -54,6 +54,22 @@ impl AdcModule {
     //     });
     //     Ok(())
     // }
+
+    fn begin_reading(&self) {
+        println!("begin_reading{:}", self.name);
+        let my_name = self.name.to_string();
+        // create the Thread, also pass ownership of my_name into it
+        let _t: JoinHandle<Self> = thread::spawn(move || {
+            println!{"inside the new thread, begin_reading {:}", my_name};
+            // do other initialization I guess
+            let mut counter: i32 = 0;
+            loop {
+                counter = counter + 1;
+                println!("---->{:},a Rust thread; begin_reading {:}", my_name, counter);
+                thread::sleep(Duration::from_millis(500));
+            }
+        });
+    }
 
     fn test(&self) {
         // self.name = "hi mark".to_string();
