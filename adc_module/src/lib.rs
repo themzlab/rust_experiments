@@ -10,6 +10,7 @@ use rppal::spi::{Bus, Mode, Segment, SlaveSelect, Spi};
 struct AdcModule {
     #[pyo3(get)]
     name: String,
+    //
     offset_adc: i32,
     divisor_adc: f32,
 }
@@ -90,5 +91,7 @@ impl AdcModule {
 #[pymodule]
 fn adc_module(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<AdcModule>()?;
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+    m.add("__doc__", "https://github.com/themzlab/rust_experiments/tree/main/adc_module")?;
     Ok(())
 }
