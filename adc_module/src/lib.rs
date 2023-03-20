@@ -48,7 +48,7 @@ impl AdcModule {
             loop {
                 spi.transfer_segments(&[
                     Segment::with_read(&mut read_buffer),
-                ]);
+                ]).unwrap();
                 let _output = u16::from_be_bytes(read_buffer);
                 let mut output = _output as i32;
                 output = output-OFFSET_ADC;
