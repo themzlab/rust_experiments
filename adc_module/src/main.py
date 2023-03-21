@@ -15,3 +15,6 @@ except AttributeError:
 m.test(6)
 time.sleep(20)
 m.test(10)
+time.sleep(10)
+m.test(1)
+print("************************************** END **************************")
