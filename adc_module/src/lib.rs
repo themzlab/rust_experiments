@@ -2,6 +2,9 @@ use pyo3::prelude::*;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use rppal::spi::{Bus, Mode, Segment, SlaveSelect, Spi};
+use std::sync::mpsc;
+use std::sync::mpsc::{Sender, Receiver};
+
 // use std::error::Error;
 // use pyo3::{wrap_pyfunction, };
 
@@ -13,6 +16,8 @@ struct AdcModule {
     //
     offset_adc: i32,
     divisor_adc: f32,
+    tx: Sender<i32>,
+    rx: Receiver<i32>,
 }
 
 
@@ -21,6 +26,8 @@ impl AdcModule {
     #[new]
     fn new(name: String, offset_adc: i32, divisor_adc: f32) -> Self {
         eprintln!("Thread {:} has been started", name);
+
+        let (tx, rx) = mpsc::channel();
 
         let _t: JoinHandle<Self> = thread::spawn(move || {
             eprintln!("created the spi interface");
@@ -32,7 +39,7 @@ impl AdcModule {
         }
         );
 
-        AdcModule {name, offset_adc, divisor_adc}
+        AdcModule {name, offset_adc, divisor_adc, tx, rx}
     }
 
     fn begin_thread(&self) {
@@ -82,8 +89,9 @@ impl AdcModule {
         });
     }
 
-    fn test(&self) {
-        println!("{:}", self.name);
+    fn test(&self, value_to_send: i32) {
+        eprintln!("{:} sending task value {:}", self.name, value_to_send);
+        self.tx.send(value_to_send).unwrap();
     }
 }
 

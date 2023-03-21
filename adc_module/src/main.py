@@ -12,6 +12,6 @@ try:
     m.begin_thread()
 except AttributeError:
     print("---------------------------------begin_thread is not implemented")
-m.test()
+m.test(6)
 time.sleep(20)
-m.test()
+m.test(10)
