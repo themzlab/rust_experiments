@@ -49,6 +49,8 @@ impl AdcModule {
         let divisor_adc: f32 = self.divisor_adc;
         let offset_adc: i32 = self.offset_adc;
         // create the Thread, also pass ownership of my_name into it
+        let new_reciever = &self.rx;
+        // self.rx = None;
         let _t: JoinHandle<Self> = thread::spawn(move || {
     
             eprintln!{"LATER, started new thread named {:}", my_name};
@@ -56,6 +58,11 @@ impl AdcModule {
             let mut counter: i32 = 0;
             let mut read_buffer: [u8; 2] = [0u8; 2]; // the spi read will be according to the size of the buffer
             loop {
+
+                // if let Ok(received) = new_reciever.try_recv() {
+                //     println!("Got: {}", received);
+                // }
+
                 spi.transfer_segments(&[
                     Segment::with_read(&mut read_buffer),
                 ]).unwrap();
@@ -82,6 +89,9 @@ impl AdcModule {
             // do other initialization I guess
             let mut counter: i32 = 0;
             loop {
+
+                // let received = self.rx.recv().unwrap();
+                // println!("Got: {}", received);
                 counter += 1;
                 eprintln!("---->{:},a Test thread; begin_reading {:}", my_name, counter);
                 thread::sleep(Duration::from_millis(500));
@@ -93,6 +103,7 @@ impl AdcModule {
         eprintln!("{:} sending task value {:}", self.name, value_to_send);
         self.tx.send(value_to_send).unwrap();
     }
+
 }
 
 // the name below must match the project name
