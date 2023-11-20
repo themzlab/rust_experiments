@@ -2,19 +2,21 @@ use pyo3::prelude::*;
 use rppal::pwm::{Channel, Polarity, Pwm};
 use std::{sync::Arc, thread, time::Duration, sync::atomic::{AtomicBool, Ordering}};
 use std::thread::JoinHandle;
+// overlay on Raspberry pi 4B
+// # dtoverlay=pwm-2chan,pin=18,func=2,pin2=13,func2=4
 
 static mut RUNNING: Option<Arc<AtomicBool>> = None;
 static mut PWM_THREAD: Option<JoinHandle<()>> = None;
 
 #[pyfunction]
-fn start_pwm(duty_cycles: Vec<f64>, sleep_ms: u64) -> PyResult<()> {
+fn start_pwm(duty_cycles: Vec<f64>, sleep_ms: u64, modulation_hz: f64) -> PyResult<()> {
     let running = Arc::new(AtomicBool::new(true));
     unsafe {
         RUNNING = Some(running.clone());
     }
 
     let handle = thread::spawn(move || {
-        let pwm = Pwm::with_frequency(Channel::Pwm0, 20_000.0, 0.0, Polarity::Normal, true).unwrap();
+        let pwm = Pwm::with_frequency(Channel::Pwm0, modulation_hz, 0.0, Polarity::Normal, true).unwrap();
 
         for duty_cycle in duty_cycles.iter().cycle() {
             if !running.load(Ordering::SeqCst) {
