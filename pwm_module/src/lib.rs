@@ -7,7 +7,7 @@ static mut RUNNING: Option<Arc<AtomicBool>> = None;
 static mut PWM_THREAD: Option<JoinHandle<()>> = None;
 
 #[pyfunction]
-fn start_pwm(duty_cycles: Vec<f64>) -> PyResult<()> {
+fn start_pwm(duty_cycles: Vec<f64>, sleep_ms: u64) -> PyResult<()> {
     let running = Arc::new(AtomicBool::new(true));
     unsafe {
         RUNNING = Some(running.clone());
@@ -21,7 +21,7 @@ fn start_pwm(duty_cycles: Vec<f64>) -> PyResult<()> {
                 break;
             }
             pwm.set_duty_cycle(*duty_cycle).unwrap();
-            thread::sleep(Duration::from_millis(10));
+            thread::sleep(Duration::from_millis(sleep_ms));
         }
     });
 
