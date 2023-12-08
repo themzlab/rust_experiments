@@ -1,35 +1,51 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Condvar};
 use std::thread;
 use std::time::Duration;
 
 fn main() {
-    let num = Arc::new(Mutex::new(5));
-    // allow `num` to be shared across threads (Arc) and modified
-    // (Mutex) safely without a data race.
+    // Create a shared state (boolean flag) and a condition variable, 
+    // wrapped in an Arc for safe sharing across threads
+    let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    
+    // Spawn two threads
+    for i in 1..=2 {
+        let pair_clone = pair.clone();
+        thread::spawn(move || {
 
-    let num_clone = num.clone();
-    // create a cloned reference before moving `num` into the thread.
 
-    thread::spawn(move || {
-        loop {
-            *num.lock().unwrap() += 1;
-            // modify the number.
-            thread::sleep(Duration::from_secs(10));
+            loop {
+                // Clone the Arc to pass a reference to the shared state to the threads
+                let (lock, cvar) = &*pair_clone;
+
+                // Lock the mutex to access the shared state
+                let mut started = lock.lock().unwrap();
+
+                
+                // println!("Thread {}: Message flag {}", i, started);
+
+                started = cvar.wait(started).unwrap();
+
+                // Reset the flag
+                *started = false;
+
+                // Print a message
+                println!("Thread {}: Message flag {}", i, started);
+
+            }
+        });
+    }
+
+    thread::sleep(Duration::from_millis(2000));
+    // Loop in the main thread to signal every second
+    for _ in 0..10 {
+        thread::sleep(Duration::from_secs(1));
+
+        // Signal the condition variable
+        {
+            let (lock, cvar) = &*pair;
+            let mut started = lock.lock().unwrap();
+            *started = true;
+            cvar.notify_all();
         }
-    });
-
-    output(num_clone);
-}
-
-fn output(num: Arc<Mutex<i32>>) {
-    loop {
-        println!("{:?}", *num.lock().unwrap());
-        // read the number.
-        //  - lock(): obtains a mutable reference; may fail,
-        //    thus return a Result
-        //  - unwrap(): ignore the error and get the real
-        //    reference / cause panic on error.
-        thread::sleep(Duration::from_secs(5));
     }
 }
-
