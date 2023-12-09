@@ -26,8 +26,6 @@ fn main() {
         let (my_mutex2, my_conditional_variable_2) = &*pair2_clone;
         loop {
                 {
-                    
-
                     let mut i = 1;
                     let my_interval = Duration::from_millis(50);
                     
@@ -91,18 +89,21 @@ fn main() {
     // Signal the condition variable
     // When the block is entered, the mutex is locked, and the shared state (started) is 
     // accessed and modified
+    println!("the code gets to kick off the first set of DATA");
+    thread::sleep(Duration::from_millis(1000));
     {
-        println!("the code gets to kick off the first set of DATA");
         let mut started_1: std::sync::MutexGuard<'_, bool> = my_mutex1.lock().unwrap();
         
         // dereference operator. access the data (bool) that the MutexGuard is pointing to
-        thread::sleep(Duration::from_millis(1000));
+        //thread::sleep(Duration::from_millis(1000));
         *started_1 = true;
 
         // this seems to be a mechanism to notify the other threads that the value of started has changed
         cvar1.notify_all();
-        println!("\nend notify started= {}\n", started_1);
+        
     }
+    println!("\nend notify 1 started\n");
+    
     // the other threads will not advance even though the notification has been sent
     // until the code block goes out of scope and releases my_mutex
     // the lock guard returned by lock() goes out of scope. This automatically releases
