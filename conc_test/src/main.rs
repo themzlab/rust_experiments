@@ -8,17 +8,21 @@ fn main() {
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
     
     // Spawn two threads
-    for i in 1..=2 {
+    for i in 1..=4 {
         let pair_clone = pair.clone();
         thread::spawn(move || {
 
+            // Clone the Arc to pass a reference to the shared state to the threads
+            let (lock, cvar) = &*pair_clone;
+
+            let mut started = lock.lock().unwrap();
 
             loop {
                 // Clone the Arc to pass a reference to the shared state to the threads
-                let (lock, cvar) = &*pair_clone;
+                // let (lock, cvar) = &*pair_clone;
 
                 // Lock the mutex to access the shared state
-                let mut started = lock.lock().unwrap();
+                // let mut started = lock.lock().unwrap();
 
                 
                 // println!("Thread {}: Message flag {}", i, started);
@@ -35,17 +39,23 @@ fn main() {
         });
     }
 
-    thread::sleep(Duration::from_millis(2000));
+    thread::sleep(Duration::from_millis(100));
     // Loop in the main thread to signal every second
+    let (lock, cvar) = &*pair;
+    // let mut started = lock.lock().unwrap();
+    // let mut started = lock.lock();
+
     for _ in 0..10 {
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_millis(2));
 
         // Signal the condition variable
         {
-            let (lock, cvar) = &*pair;
+            // let (lock, cvar) = &*pair;
             let mut started = lock.lock().unwrap();
+            // started = lock.lock().unwrap();
             *started = true;
             cvar.notify_all();
+            println!("  end notify");
         }
     }
 }
