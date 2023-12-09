@@ -10,13 +10,14 @@ fn main() {
     
     let running1: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
     let running2: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
+    let running_final: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
 
     let pair1_clone: Arc<(Mutex<bool>, Condvar)> = pair1.clone();
     let pair2_clone: Arc<(Mutex<bool>, Condvar)> = pair2.clone();
 
     let my_running_1: Arc<AtomicBool> = running1.clone();
     let my_running_2: Arc<AtomicBool> = running2.clone();
-
+    let my_running_final: Arc<AtomicBool> = running_final.clone();
     // make just one super thread
     thread::spawn(move || {
 
@@ -48,6 +49,9 @@ fn main() {
                     println!("THREAD:content 1: is complete");
                 }
                 my_running_1.store(true, Ordering::SeqCst);
+                if !my_running_final.load(Ordering::SeqCst) {
+                    break;
+                }
                 println!{"THREAD:go to the second loop"};
                 // second
                 {
@@ -72,8 +76,12 @@ fn main() {
 
                 }
                 my_running_2.store(true, Ordering::SeqCst);
+                if !my_running_final.load(Ordering::SeqCst) {
+                    break;
+                }
 
             }
+            println!("THREAD: FINALLY EXIT");
     });
 
     thread::sleep(Duration::from_millis(100));
@@ -137,5 +145,8 @@ fn main() {
     thread::sleep(Duration::from_millis(3000));
     running2.store(false, Ordering::SeqCst);
     running1.store(false, Ordering::SeqCst);
+    running_final.store(false, Ordering::SeqCst);
+    thread::sleep(Duration::from_millis(1000));
+    println!("exit main thread");
 
 }
