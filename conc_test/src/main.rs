@@ -119,6 +119,7 @@ fn main() {
     thread::sleep(Duration::from_millis(3000));
     running2.store(false, Ordering::SeqCst);
     
+    thread::sleep(Duration::from_millis(50));
     println!("now kick into the FIRST data again\n\n");
     
     // thread::sleep(Duration::from_millis(2000));
@@ -132,8 +133,9 @@ fn main() {
         cvar1.notify_all();
         println!("\nend notify FIRST started= {}\n", started1)
     }
-    running1.store(true, Ordering::SeqCst);
+    
     thread::sleep(Duration::from_millis(3000));
-
+    running2.store(false, Ordering::SeqCst);
+    running1.store(false, Ordering::SeqCst);
 
 }
