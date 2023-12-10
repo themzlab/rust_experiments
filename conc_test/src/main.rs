@@ -1,4 +1,5 @@
 use inline_colorization::*;
+use std::sync::mpsc;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::{
@@ -25,6 +26,9 @@ fn main() {
     let my_running_final: Arc<AtomicBool> = running_final.clone();
     let run_period_ms = 500;
     let loop_speed_ms = 50;
+
+    let (sender, receiver) = mpsc::channel();
+
     // make just one super thread
     thread::spawn(move || {
         // Clone the Arc to pass a reference to the shared state to the threads
@@ -67,6 +71,10 @@ fn main() {
                     started2 = my_conditional_variable_2.wait(started2).unwrap();
                     *started2 = false;
                 }
+
+                let received_data: (f64, Vec<f64>, String) = receiver.recv().unwrap();
+                println!("Received in spawned thread: {}", &received_data.2);
+
                 loop {
                     if !my_running_2.load(Ordering::SeqCst) {
                         break;
@@ -85,12 +93,12 @@ fn main() {
         println!("THREAD: FINALLY EXIT");
     });
 
-    fn signal_condition(started: &Mutex<bool>, cvar: &Condvar) -> bool{
+    fn signal_condition(started: &Mutex<bool>, cvar: &Condvar) -> bool {
         let started_guard: MutexGuard<bool> = started.lock().unwrap();
-        
+
         if *started_guard {
             cvar.notify_all();
-            return true
+            return true;
         }
         false
     }
@@ -102,6 +110,7 @@ fn main() {
     // Loop in the main thread to signal every second
     let (my_mutex1, cvar1) = &*pair1;
     let (my_mutex2, cvar2) = &*pair2;
+
     // Signal the condition variable
     // When the block is entered, the mutex is locked, and the shared state (started) is
     // accessed and modified
@@ -130,10 +139,19 @@ fn main() {
     for _ in 1..=50 {
         thread::sleep(Duration::from_millis(5));
         // println!("  Notification of 2 to start");
-        if signal_condition(my_mutex2, cvar2){
+        if signal_condition(my_mutex2, cvar2) {
             break;
         }
     }
+
+    // let data = "Hello, from the main thread!";
+    let data = (
+        42.0,
+        vec![1.0, 2.0, 3.0],
+        String::from("Hello, from the main thread!"),
+    );
+
+    sender.send(data).unwrap();
 
     thread::sleep(Duration::from_millis(run_period_ms));
 
