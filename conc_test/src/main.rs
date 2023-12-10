@@ -1,10 +1,10 @@
+use inline_colorization::*;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::{
     sync::atomic::{AtomicBool, Ordering},
     time::Duration,
 };
-use inline_colorization::*;
 
 fn main() {
     // Create a shared state (boolean flag) and a condition variable,
@@ -85,7 +85,16 @@ fn main() {
         println!("THREAD: FINALLY EXIT");
     });
 
-    thread::sleep(Duration::from_millis(100));
+    fn signal_condition(started: &Mutex<bool>, cvar: &Condvar) {
+        let mut started_guard: MutexGuard<bool> = started.lock().unwrap();
+        *started_guard = true;
+        cvar.notify_all();
+    }
+
+    fn set_running_flag_false(running_flag: Arc<AtomicBool>) {
+        running_flag.store(false, Ordering::SeqCst);
+    }
+
     // Loop in the main thread to signal every second
     let (my_mutex1, cvar1) = &*pair1;
     let (my_mutex2, cvar2) = &*pair2;
@@ -95,22 +104,7 @@ fn main() {
     println!("the code gets to kick off the first set of DATA");
     thread::sleep(Duration::from_millis(1000));
 
-    fn kick_to_next(started: &Mutex<bool>, cvar: &Condvar) {
-        let mut started_guard: MutexGuard<bool> = started.lock().unwrap();
-        *started_guard = true;
-        cvar.notify_all();
-    }
-
-    // {
-    //     let mut started_1: std::sync::MutexGuard<'_, bool> = my_mutex1.lock().unwrap();
-
-    //     // dereference operator. access the data (bool) that the MutexGuard is pointing to
-    //     *started_1 = true;
-
-    //     // this seems to be a mechanism to notify the other threads that the value of started has changed
-    //     cvar1.notify_all();
-    // }
-    kick_to_next(my_mutex1, cvar1);
+    signal_condition(my_mutex1, cvar1);
 
     println!("End notify 1 started");
 
@@ -118,44 +112,32 @@ fn main() {
     // until the code block goes out of scope and releases my_mutex
     // the lock guard returned by lock() goes out of scope. This automatically releases
     // the lock on the mutex
-    //}
+    
     thread::sleep(Duration::from_millis(run_period_ms));
     println!("ENDING notifications for content 1");
-    running1.store(false, Ordering::SeqCst);
+
+    set_running_flag_false(running1.clone());
     //
     thread::sleep(Duration::from_millis(50));
     println!("now kick into the SECOND loop");
-    {
-        let mut started2: std::sync::MutexGuard<'_, bool> = my_mutex2.lock().unwrap();
 
-        // dereference operator. access the data (bool) that the MutexGuard is pointing to
-        *started2 = true;
+    signal_condition(my_mutex2, cvar2);
 
-        // this seems to be a mechanism to notify the other threads that the value of started has changed
-        cvar2.notify_all();
-        println!("end notify SECOND started= {}", started2)
-    }
     thread::sleep(Duration::from_millis(run_period_ms));
-    running2.store(false, Ordering::SeqCst);
+
+    set_running_flag_false(running2.clone());
 
     thread::sleep(Duration::from_millis(50));
     println!("now kick into the FIRST data again");
 
-    {
-        let mut started1: std::sync::MutexGuard<'_, bool> = my_mutex1.lock().unwrap();
-
-        // dereference operator. access the data (bool) that the MutexGuard is pointing to
-        *started1 = true;
-
-        // this seems to be a mechanism to notify the other threads that the value of started has changed
-        cvar1.notify_all();
-        println!("end notify FIRST started= {}", started1)
-    }
+    signal_condition(my_mutex1, cvar1);
 
     thread::sleep(Duration::from_millis(run_period_ms));
-    running2.store(false, Ordering::SeqCst);
-    running1.store(false, Ordering::SeqCst);
-    running_final.store(false, Ordering::SeqCst);
+
+    set_running_flag_false(running2.clone());
+    set_running_flag_false(running1.clone());
+    set_running_flag_false(running_final.clone());
+
     thread::sleep(Duration::from_millis(1000));
     println!("{color_blue}{style_bold}Exit main thread{color_reset}{style_reset}");
 }
