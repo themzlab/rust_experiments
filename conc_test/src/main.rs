@@ -1,4 +1,4 @@
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::{
     sync::atomic::{AtomicBool, Ordering},
@@ -21,8 +21,9 @@ fn main() {
 
     let my_running_1: Arc<AtomicBool> = running1.clone();
     let my_running_2: Arc<AtomicBool> = running2.clone();
+
     let my_running_final: Arc<AtomicBool> = running_final.clone();
-    let run_period_ms = 2000;
+    let run_period_ms = 500;
     let loop_speed_ms = 20;
     // make just one super thread
     thread::spawn(move || {
@@ -93,15 +94,24 @@ fn main() {
     // accessed and modified
     println!("the code gets to kick off the first set of DATA");
     thread::sleep(Duration::from_millis(1000));
-    {
-        let mut started_1: std::sync::MutexGuard<'_, bool> = my_mutex1.lock().unwrap();
 
-        // dereference operator. access the data (bool) that the MutexGuard is pointing to
-        *started_1 = true;
-
-        // this seems to be a mechanism to notify the other threads that the value of started has changed
-        cvar1.notify_all();
+    fn kick_to_next(started: &Mutex<bool>, cvar: &Condvar) {
+        let mut started_guard: MutexGuard<bool> = started.lock().unwrap();
+        *started_guard = true;
+        cvar.notify_all();
     }
+
+    // {
+    //     let mut started_1: std::sync::MutexGuard<'_, bool> = my_mutex1.lock().unwrap();
+
+    //     // dereference operator. access the data (bool) that the MutexGuard is pointing to
+    //     *started_1 = true;
+
+    //     // this seems to be a mechanism to notify the other threads that the value of started has changed
+    //     cvar1.notify_all();
+    // }
+    kick_to_next(my_mutex1, cvar1);
+
     println!("End notify 1 started");
 
     // the other threads will not advance even though the notification has been sent
