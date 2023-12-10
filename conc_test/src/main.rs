@@ -118,20 +118,26 @@ fn main() {
 
     set_running_flag_false(running1.clone());
     //
-    thread::sleep(Duration::from_millis(50));
+    thread::sleep(Duration::from_millis(3));
     println!("now kick into the SECOND loop");
 
-    signal_condition(my_mutex2, cvar2);
-
+    for _ in 1..=5 {
+        signal_condition(my_mutex2, cvar2);
+        thread::sleep(Duration::from_millis(5));
+    }
     thread::sleep(Duration::from_millis(run_period_ms));
 
     set_running_flag_false(running2.clone());
 
-    thread::sleep(Duration::from_millis(50));
+    thread::sleep(Duration::from_millis(1));
     println!("now kick into the FIRST data again");
 
     signal_condition(my_mutex1, cvar1);
 
+    for _ in 1..=5 {
+        signal_condition(my_mutex1, cvar1);
+        thread::sleep(Duration::from_millis(5));
+    }
     thread::sleep(Duration::from_millis(run_period_ms));
 
     set_running_flag_false(running2.clone());
