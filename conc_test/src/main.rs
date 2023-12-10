@@ -1,5 +1,5 @@
 use inline_colorization::*;
-use std::sync::mpsc;
+// use std::sync::mpsc;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::{
@@ -27,7 +27,7 @@ fn main() {
     let run_period_ms = 500;
     let loop_speed_ms = 50;
 
-    let (sender, receiver) = mpsc::channel();
+    // let (sender, receiver) = mpsc::channel();
 
     // make just one super thread
     thread::spawn(move || {
@@ -72,9 +72,10 @@ fn main() {
                     *started2 = false;
                 }
 
-                let received_data: (f64, Vec<f64>, String) = receiver.recv().unwrap();
-                println!("Received in spawned thread: {}", &received_data.2);
-
+                // let received_data: (u64, Vec<f64>, String) = receiver.recv().unwrap();
+                // println!("Received in spawned thread: {}", &received_data.2);
+                // let loop_rate = Duration::from_millis(received_data.0);
+                // let loop_rate = Duration::from_millis(received_data.0);
                 loop {
                     if !my_running_2.load(Ordering::SeqCst) {
                         break;
@@ -145,13 +146,13 @@ fn main() {
     }
 
     // let data = "Hello, from the main thread!";
-    let data = (
-        42.0,
-        vec![1.0, 2.0, 3.0],
-        String::from("Hello, from the main thread!"),
-    );
+    // let data = (
+    //     6,
+    //     vec![1.0, 2.0, 3.0],
+    //     String::from("Hello, from the main thread!"),
+    // );
 
-    sender.send(data).unwrap();
+    // sender.send(data).unwrap();
 
     thread::sleep(Duration::from_millis(run_period_ms));
 
