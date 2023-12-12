@@ -5,25 +5,28 @@ extern crate lazy_static;
 
 
 lazy_static! {
-    static ref CHANNEL: (Arc<Mutex<mpsc::Sender<i32>>>, Arc<Mutex<mpsc::Receiver<i32>>>) = {
+    static ref CHANNEL: (Arc<Mutex<mpsc::Sender<(f64, i32)>>>, Arc<Mutex<mpsc::Receiver<(f64, i32)>>>) = {
         let (tx, rx) = mpsc::channel();
         (Arc::new(Mutex::new(tx)), Arc::new(Mutex::new(rx)))
     };
 }
 
 
+
 #[pyfunction]
-fn send_value_py(val: i32) {
+fn send_value_py(val: (f64, i32)) {
     let tx = CHANNEL.0.lock().unwrap();
     tx.send(val).unwrap();
 }
 
 
+
 #[pyfunction]
-fn receive_value_py() -> Option<i32> {
+fn receive_value_py() -> Option<(f64, i32)> {
     let rx = CHANNEL.1.lock().unwrap();
     rx.try_recv().ok()
 }
+
 
 
 #[pymodule]
