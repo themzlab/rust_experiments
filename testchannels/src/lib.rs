@@ -11,8 +11,8 @@ extern crate lazy_static;
 
 lazy_static! {
     static ref CHANNEL: (
-        Arc<Mutex<mpsc::Sender<(f64, u8)>>>,
-        Arc<Mutex<mpsc::Receiver<(f64, u8)>>>
+        Arc<Mutex<mpsc::Sender<(f64, u8, Vec<f64>)>>>,
+        Arc<Mutex<mpsc::Receiver<(f64, u8, Vec<f64>)>>>
     ) = {
         let (tx, rx) = mpsc::channel();
         (Arc::new(Mutex::new(tx)), Arc::new(Mutex::new(rx)))
@@ -34,6 +34,10 @@ fn start_printing_thread() -> PyResult<()> {
             //
             let mut myfloat: f64 = 0.0;
             let mut myinteger: u8 = 0;
+            //let mut local_vec: Vec<f64> = Vec::new();
+            let mut local_vec: Vec<f64> = vec![0.0; 3];
+            // let mut local_vec: Vec<f64> = vec![0.0; 74];
+
             loop {
                 if !EXIT_REQUEST.load(Ordering::Relaxed) {
                     break;
@@ -52,13 +56,20 @@ fn start_printing_thread() -> PyResult<()> {
                 // Ok(data) => {
                 //     _f = Some(data.0);
                 //     _i = Some(data.1);
-                Ok((_myfloat, _myinteger)) => {
+                Ok((_myfloat, _myinteger, _vec)) => {
                     myfloat = _myfloat;
                     myinteger = _myinteger;
+                    if _vec.len() == 3 {
+                        println!("correct length");
+                    }
+                    local_vec = _vec;
                     // _f and _i are the float and integer values from the tuple, respectively
                     // You can add any mathematical operations here using _f and _i
                 }
                 Err(e) => println!("Failed to receive data: {}", e),
+            }
+            for (index, value) in local_vec.iter().enumerate() {
+                println!("RUST: Element at index {}: {}", index, value);
             }
             println!(
                 "{style_bold}RUST: my float was {} and integer {} {style_reset}",
@@ -70,16 +81,18 @@ fn start_printing_thread() -> PyResult<()> {
 }
 
 #[pyfunction]
-fn send_value_py(val: (f64, u8)) {
+fn send_value_py(val: (f64, u8, Vec<f64>)) {
     {
-        let tx: std::sync::MutexGuard<'_, mpsc::Sender<(f64, u8)>> = CHANNEL.0.lock().unwrap();
+        let tx: std::sync::MutexGuard<'_, mpsc::Sender<(f64, u8, Vec<f64>)>> =
+            CHANNEL.0.lock().unwrap();
         tx.send(val).unwrap();
     }
 }
 
 #[pyfunction]
-fn receive_value_py() -> Option<(f64, u8)> {
-    let rx: std::sync::MutexGuard<'_, mpsc::Receiver<(f64, u8)>> = CHANNEL.1.lock().unwrap();
+fn receive_value_py() -> Option<(f64, u8, Vec<f64>)> {
+    let rx: std::sync::MutexGuard<'_, mpsc::Receiver<(f64, u8, Vec<f64>)>> =
+        CHANNEL.1.lock().unwrap();
     rx.try_recv().ok()
 }
 

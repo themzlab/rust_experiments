@@ -6,6 +6,9 @@ import threading
 import testchannels
 
 def safe_send(_values) -> bool:
+    if len(_values) == 2:
+        _values = (_values[0], _values[1], (4.5, 6.7, 1.0))
+
     try:
         testchannels.send_value_py(_values);
     except ValueError:
@@ -37,8 +40,10 @@ g = time.time()
 h = 0
 for i in range(255):
     safe_send((i / 10.0, i))
-    myfloat, my_int =testchannels.receive_value_py()
+    myfloat, my_int, _mylist =testchannels.receive_value_py()
     h += my_int
+print(_mylist)
+
 ending = time.time()
 print(h)
 print((ending-g)/10)
@@ -49,8 +54,8 @@ time.sleep(1.0)
 
 success = safe_send((65.0, "hi"))
 if success:
-    myfloat, my_int =testchannels.receive_value_py()
-    print(f"{myfloat}\t{my_int}")
+    myfloat, my_int, _mylist =testchannels.receive_value_py()
+    print(f"{myfloat}\t{my_int}{_mylist}")
 print(success)
 
 
