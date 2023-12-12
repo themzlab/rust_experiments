@@ -32,6 +32,8 @@ fn start_printing_thread() -> PyResult<()> {
         let receiver_clone = Arc::clone(&CHANNEL.1);
         thread::spawn(move || {
             //
+            let mut myfloat: f64 = 0.0;
+            let mut myinteger: u8 = 0;
             loop {
                 if !EXIT_REQUEST.load(Ordering::Relaxed) {
                     break;
@@ -47,15 +49,21 @@ fn start_printing_thread() -> PyResult<()> {
             );
             // After exiting the loop
             match receiver_clone.lock().unwrap().recv() {
-                Ok(data) => println!(
-                    "{style_bold}RUST: Received data from channel: {:?}{style_reset}",
-                    data
-                ),
-                Err(e) => println!(
-                    "{style_bold}RUST: Failed to receive data: {}{style_reset}",
-                    e
-                ),
+                // Ok(data) => {
+                //     _f = Some(data.0);
+                //     _i = Some(data.1);
+                Ok((_myfloat, _myinteger)) => {
+                    myfloat = _myfloat;
+                    myinteger = _myinteger;
+                    // _f and _i are the float and integer values from the tuple, respectively
+                    // You can add any mathematical operations here using _f and _i
+                }
+                Err(e) => println!("Failed to receive data: {}", e),
             }
+            println!(
+                "{style_bold}RUST: my float was {} and integer {} {style_reset}",
+                myfloat, myinteger
+            );
         });
     }
     Ok(())
