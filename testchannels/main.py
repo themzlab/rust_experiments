@@ -54,9 +54,26 @@ if success:
 print(success)
 
 
+testchannels.start_printing_thread()
+print("go there ----")
+time.sleep(1.0)
+print("go there ---- again")
 print(testchannels.get_shared_bool())
 print(testchannels.get_shared_bool())
+time.sleep(1.0)
+testchannels.start_printing_thread()
 testchannels.set_shared_bool(True)
+time.sleep(1.0)
 print(testchannels.get_shared_bool())
 testchannels.set_shared_bool(False)
+time.sleep(2.0)
+print(testchannels.get_exit_request_status())
+
+success = safe_send((65.0, 3))
+if success:
+    testchannels.set_exit_request()
+
+print(testchannels.get_exit_request_status())
+print("just told the thread to exit, waiting 3 seconds now")
+time.sleep(3.0)
 print(testchannels.get_shared_bool())
