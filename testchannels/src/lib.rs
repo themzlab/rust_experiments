@@ -5,8 +5,8 @@ extern crate lazy_static;
 
 lazy_static! {
     static ref CHANNEL: (
-        Arc<Mutex<mpsc::Sender<(f64, i32)>>>,
-        Arc<Mutex<mpsc::Receiver<(f64, i32)>>>
+        Arc<Mutex<mpsc::Sender<(f64, u8)>>>,
+        Arc<Mutex<mpsc::Receiver<(f64, u8)>>>
     ) = {
         let (tx, rx) = mpsc::channel();
         (Arc::new(Mutex::new(tx)), Arc::new(Mutex::new(rx)))
@@ -14,16 +14,16 @@ lazy_static! {
 }
 
 #[pyfunction]
-fn send_value_py(val: (f64, i32)) {
+fn send_value_py(val: (f64, u8)) {
     {
-        let tx: std::sync::MutexGuard<'_, mpsc::Sender<(f64, i32)>> = CHANNEL.0.lock().unwrap();
+        let tx: std::sync::MutexGuard<'_, mpsc::Sender<(f64, u8)>> = CHANNEL.0.lock().unwrap();
         tx.send(val).unwrap();
     }
 }
 
 #[pyfunction]
-fn receive_value_py() -> Option<(f64, i32)> {
-    let rx: std::sync::MutexGuard<'_, mpsc::Receiver<(f64, i32)>> = CHANNEL.1.lock().unwrap();
+fn receive_value_py() -> Option<(f64, u8)> {
+    let rx: std::sync::MutexGuard<'_, mpsc::Receiver<(f64, u8)>> = CHANNEL.1.lock().unwrap();
     rx.try_recv().ok()
 }
 
