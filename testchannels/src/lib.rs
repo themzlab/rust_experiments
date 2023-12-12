@@ -3,31 +3,29 @@ use std::sync::{mpsc, Arc, Mutex};
 #[macro_use]
 extern crate lazy_static;
 
-
 lazy_static! {
-    static ref CHANNEL: (Arc<Mutex<mpsc::Sender<(f64, i32)>>>, Arc<Mutex<mpsc::Receiver<(f64, i32)>>>) = {
+    static ref CHANNEL: (
+        Arc<Mutex<mpsc::Sender<(f64, i32)>>>,
+        Arc<Mutex<mpsc::Receiver<(f64, i32)>>>
+    ) = {
         let (tx, rx) = mpsc::channel();
         (Arc::new(Mutex::new(tx)), Arc::new(Mutex::new(rx)))
     };
 }
 
-
-
 #[pyfunction]
 fn send_value_py(val: (f64, i32)) {
-    let tx = CHANNEL.0.lock().unwrap();
-    tx.send(val).unwrap();
+    {
+        let tx: std::sync::MutexGuard<'_, mpsc::Sender<(f64, i32)>> = CHANNEL.0.lock().unwrap();
+        tx.send(val).unwrap();
+    }
 }
-
-
 
 #[pyfunction]
 fn receive_value_py() -> Option<(f64, i32)> {
-    let rx = CHANNEL.1.lock().unwrap();
+    let rx: std::sync::MutexGuard<'_, mpsc::Receiver<(f64, i32)>> = CHANNEL.1.lock().unwrap();
     rx.try_recv().ok()
 }
-
-
 
 #[pymodule]
 fn testchannels(_py: Python, m: &PyModule) -> PyResult<()> {
