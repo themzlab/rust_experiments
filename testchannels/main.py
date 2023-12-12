@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import time
+import threading
+
 import testchannels
 
 def safe_send(_values) -> bool:
@@ -50,3 +52,11 @@ if success:
     myfloat, my_int =testchannels.receive_value_py()
     print(f"{myfloat}\t{my_int}")
 print(success)
+
+
+print(testchannels.get_shared_bool())
+print(testchannels.get_shared_bool())
+testchannels.set_shared_bool(True)
+print(testchannels.get_shared_bool())
+testchannels.set_shared_bool(False)
+print(testchannels.get_shared_bool())
