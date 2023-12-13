@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use inline_colorization::*;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -11,8 +11,8 @@ extern crate lazy_static;
 
 lazy_static! {
     static ref CHANNEL: (
-        Arc<Mutex<mpsc::Sender<(f64, u8, Vec<f64>)>>>,
-        Arc<Mutex<mpsc::Receiver<(f64, u8, Vec<f64>)>>>
+        Arc<Mutex<mpsc::Sender<(u64, u8, Vec<f64>)>>>,
+        Arc<Mutex<mpsc::Receiver<(u64, u8, Vec<f64>)>>>
     ) = {
         let (tx, rx) = mpsc::channel();
         (Arc::new(Mutex::new(tx)), Arc::new(Mutex::new(rx)))
@@ -29,11 +29,11 @@ fn initialize_module() -> PyResult<()> {
     let mut started = THREAD_STARTED.lock().unwrap();
     if !*started {
         *started = true;
-        let shared_bool_clone = Arc::clone(&SHARED_BOOL);
+        let _shared_bool_clone = Arc::clone(&SHARED_BOOL);
         let receiver_clone = Arc::clone(&CHANNEL.1);
         thread::spawn(move || {
             //
-            let mut myfloat: f64 = 0.0;
+            let mut loop_micros: u64 = 20000;
             let mut myinteger: u8 = 0;
             //let mut local_vec: Vec<f64> = Vec::new();
             let mut local_vec: Vec<f64> = vec![0.0; 3];
@@ -48,7 +48,7 @@ fn initialize_module() -> PyResult<()> {
                     //     _f = Some(data.0);
                     //     _i = Some(data.1);
                     Ok((_myfloat, _myinteger, _vec)) => {
-                        myfloat = _myfloat;
+                        loop_micros = _myfloat;
                         myinteger = _myinteger;
                         if _vec.len() == 3 {
                             println!("correct length");
@@ -59,17 +59,31 @@ fn initialize_module() -> PyResult<()> {
                     }
                     Err(e) => println!("Failed to receive data: {}", e),
                 }
+                let loop_speed = Duration::from_micros(loop_micros);
                 set_error_code(3);
-                loop {
+                for duty_cycle in local_vec.iter().cycle() {
+                    let start = Instant::now();
                     if EXIT_REQUEST.load(Ordering::Relaxed) {
                         break;
                     }
-                    {
-                        let value = shared_bool_clone.lock().unwrap();
-                        println!("SHARED_BOOL value: {}", *value);
+                    println!("duty cycle: {}", *duty_cycle);
+                    let elapsed = start.elapsed();
+                    if let Some(sleep_duration) = loop_speed.checked_sub(elapsed) {
+                        // only sleep if there is a positive time duration after subtracting elapsed time
+                        // from the desired interval
+                        std::thread::sleep(sleep_duration);
                     }
-                    std::thread::sleep(Duration::from_millis(50));
                 }
+                // loop {
+                //     if EXIT_REQUEST.load(Ordering::Relaxed) {
+                //         break;
+                //     }
+                //     {
+                //         let value = shared_bool_clone.lock().unwrap();
+                //         println!("SHARED_BOOL value: {}", *value);
+                //     }
+                //     std::thread::sleep(loop_speed);
+                // }
                 println!("{style_bold}RUST: loop was cancelled, effectively ending this thread{style_reset}");
                 // After exiting the loop
                 if EXIT_REQUEST.load(Ordering::Relaxed) {
@@ -81,7 +95,7 @@ fn initialize_module() -> PyResult<()> {
                 }
                 println!(
                     "{style_bold}RUST: my float was {} and integer {} {style_reset}",
-                    myfloat, myinteger
+                    loop_micros, myinteger
                 );
                 if EXIT_REQUEST.load(Ordering::Relaxed) {
                     break;
@@ -111,17 +125,17 @@ fn clear_error_code() {
 }
 
 #[pyfunction]
-fn send_value_py(val: (f64, u8, Vec<f64>)) {
+fn send_value_py(val: (u64, u8, Vec<f64>)) {
     {
-        let tx: std::sync::MutexGuard<'_, mpsc::Sender<(f64, u8, Vec<f64>)>> =
+        let tx: std::sync::MutexGuard<'_, mpsc::Sender<(u64, u8, Vec<f64>)>> =
             CHANNEL.0.lock().unwrap();
         tx.send(val).unwrap();
     }
 }
 
 #[pyfunction]
-fn receive_value_py() -> Option<(f64, u8, Vec<f64>)> {
-    let rx: std::sync::MutexGuard<'_, mpsc::Receiver<(f64, u8, Vec<f64>)>> =
+fn receive_value_py() -> Option<(u64, u8, Vec<f64>)> {
+    let rx: std::sync::MutexGuard<'_, mpsc::Receiver<(u64, u8, Vec<f64>)>> =
         CHANNEL.1.lock().unwrap();
     rx.try_recv().ok()
 }
