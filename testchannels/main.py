@@ -58,27 +58,36 @@ if success:
     print(f"{myfloat}\t{my_int}{_mylist}")
 print(success)
 
-
-testchannels.start_printing_thread()
+print(f"is module started {testchannels.is_module_started()}")
+# initialized here as required
+testchannels.initialize_module()
+print(f"is module started {testchannels.is_module_started()}")
+print(f"exit reqeust status {testchannels.get_exit_request_status()}")
 print("go there ----")
+success = safe_send((65.0, 3))
 time.sleep(1.0)
 print("go there ---- again")
 print(testchannels.get_shared_bool())
 print(testchannels.get_shared_bool())
 time.sleep(1.0)
-testchannels.start_printing_thread()
+# initialized here as an error on purpose - to test the behavior
+testchannels.initialize_module()
+
 testchannels.set_shared_bool(True)
 time.sleep(1.0)
 print(testchannels.get_shared_bool())
 testchannels.set_shared_bool(False)
 time.sleep(2.0)
-print(testchannels.get_exit_request_status())
+print(f"exit request status is {testchannels.get_exit_request_status()}")
 
 success = safe_send((65.0, 3))
 if success:
-    testchannels.set_exit_request()
+    testchannels.set_exit_request(True)
 
-print(testchannels.get_exit_request_status())
+print(f"exit request status is {testchannels.get_exit_request_status()}")
 print("just told the thread to exit, waiting 3 seconds now")
 time.sleep(3.0)
 print(testchannels.get_shared_bool())
+print(f"module is started {testchannels.is_module_started()}")
+print(f"exit request status {testchannels.get_exit_request_status()}")
+print(f"module is started and running {testchannels.is_module_started_and_active()}")
