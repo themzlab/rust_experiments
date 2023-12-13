@@ -47,27 +47,32 @@ fn initialize_module() -> PyResult<()> {
                 // loop_micros = received_data.0;
                 // program_state = received_data.1;
                 // local_vec = received_data.2;
-                match receiver_clone.lock().unwrap().recv() {
-                    // ========================================================================================== BLOCKS
-                    Ok((loop_speed_from_python, state_requested, _vec)) => {
-                        loop_micros = loop_speed_from_python;
-                        program_state = state_requested;
-                        if _vec.len() == 3 {
-                            println!("correct length");
-                        }
-                        local_vec = _vec;
-                        TRIGGER_STATE_CHANGE.store(false, Ordering::Relaxed);
+
+                // ========================================================================================== BLOCKS
+                if let Ok((loop_speed_from_python, state_requested, _vec)) =
+                    receiver_clone.lock().unwrap().recv()
+                {
+                    loop_micros = loop_speed_from_python;
+                    program_state = state_requested;
+                    if _vec.len() == 3 {
+                        println!("correct length");
                     }
-                    Err(e) => println!("Failed to receive data: {}", e),
+                    local_vec = _vec;
+                    TRIGGER_STATE_CHANGE.store(false, Ordering::Relaxed);
+                } else {
+                    // I don't know how to reach this because when I send data from Python that is bad
+                    // an exception is thrown in Python
+                    set_error_code(4);
                 }
+
                 let loop_speed = Duration::from_micros(loop_micros);
-                set_error_code(3);
+
                 // ===================================================================== BLOCKS UNTIL LOOP BREAK IS SENT
                 {
                     for duty_cycle in local_vec.iter().cycle() {
                         let start = Instant::now();
                         if TRIGGER_STATE_CHANGE.load(Ordering::Relaxed) {
-                             break;
+                            break;
                         }
                         println!("duty cycle: {}", *duty_cycle);
                         let elapsed = start.elapsed();
