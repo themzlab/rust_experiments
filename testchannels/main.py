@@ -79,6 +79,9 @@ print(testchannels.get_shared_bool())
 testchannels.set_shared_bool(False)
 time.sleep(2.0)
 print(f"exit request status is {testchannels.get_exit_request_status()}")
+print(f"error code is {testchannels.get_error_code()}")
+testchannels.clear_error_code()
+print(f"error code is {testchannels.get_error_code()}")
 
 success = safe_send((65.0, 3))
 if success:

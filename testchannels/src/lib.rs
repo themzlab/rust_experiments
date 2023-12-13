@@ -17,6 +17,7 @@ lazy_static! {
         let (tx, rx) = mpsc::channel();
         (Arc::new(Mutex::new(tx)), Arc::new(Mutex::new(rx)))
     };
+    static ref ERROR_CODE: Arc<Mutex<u8>> = Arc::new(Mutex::new(0));
     static ref SHARED_BOOL: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
     static ref THREAD_STARTED: Mutex<bool> = Mutex::new(false);
     static ref EXIT_REQUEST: AtomicBool = AtomicBool::new(false);
@@ -58,7 +59,7 @@ fn initialize_module() -> PyResult<()> {
                     }
                     Err(e) => println!("Failed to receive data: {}", e),
                 }
-
+                set_error_code(3);
                 loop {
                     if EXIT_REQUEST.load(Ordering::Relaxed) {
                         break;
@@ -89,6 +90,24 @@ fn initialize_module() -> PyResult<()> {
         });
     }
     Ok(())
+}
+
+// This function can be used inside any thread to update the value
+fn set_error_code(value: u8) {
+    let mut shared_u8 = ERROR_CODE.lock().unwrap();
+    *shared_u8 = value;
+}
+
+#[pyfunction]
+fn get_error_code() -> PyResult<u8> {
+    let shared_u8 = ERROR_CODE.lock().unwrap();
+    Ok(*shared_u8)
+}
+
+#[pyfunction]
+fn clear_error_code() {
+    let mut _error_code = ERROR_CODE.lock().unwrap();
+    *_error_code = 0;
 }
 
 #[pyfunction]
@@ -159,6 +178,7 @@ fn testchannels(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_exit_request_status, m)?)?;
     m.add_function(wrap_pyfunction!(is_module_started, m)?)?;
     m.add_function(wrap_pyfunction!(is_module_started_and_active, m)?)?;
-
+    m.add_function(wrap_pyfunction!(get_error_code, m)?)?;
+    m.add_function(wrap_pyfunction!(clear_error_code, m)?)?;
     Ok(())
 }
