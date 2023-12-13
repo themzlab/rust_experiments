@@ -19,14 +19,15 @@ lazy_static! {
     };
     static ref ERROR_CODE: Arc<Mutex<u8>> = Arc::new(Mutex::new(0));
     static ref SHARED_BOOL: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-    static ref THREAD_STARTED: Mutex<bool> = Mutex::new(false);
+    static ref THREAD_IS_STARTED: Mutex<bool> = Mutex::new(false);
+    static ref TRIGGER_STATE_CHANGE: AtomicBool = AtomicBool::new(false);
     static ref EXIT_REQUEST: AtomicBool = AtomicBool::new(false);
 }
 
 #[pyfunction]
 fn initialize_module() -> PyResult<()> {
     // this is a singleton - it can only be started one time
-    let mut started = THREAD_STARTED.lock().unwrap();
+    let mut started = THREAD_IS_STARTED.lock().unwrap();
     if !*started {
         *started = true;
         let _shared_bool_clone = Arc::clone(&SHARED_BOOL);
@@ -34,7 +35,7 @@ fn initialize_module() -> PyResult<()> {
         thread::spawn(move || {
             //
             let mut loop_micros: u64 = 20000;
-            let mut myinteger: u8 = 0;
+            let mut program_state: u8 = 0;
             //let mut local_vec: Vec<f64> = Vec::new();
             let mut local_vec: Vec<f64> = vec![0.0; 3];
             // let mut local_vec: Vec<f64> = vec![0.0; 74];
@@ -42,48 +43,41 @@ fn initialize_module() -> PyResult<()> {
                 // to enable multiple entries of the commands
 
                 // recieve data so we know what parameters to run
+                // let received_data: (u64, u8, Vec<f64>) = receiver_clone.lock().unwrap().recv();
+                // loop_micros = received_data.0;
+                // program_state = received_data.1;
+                // local_vec = received_data.2;
                 match receiver_clone.lock().unwrap().recv() {
-                    // =============================================== BLOCKS
-                    // Ok(data) => {
-                    //     _f = Some(data.0);
-                    //     _i = Some(data.1);
-                    Ok((_myfloat, _myinteger, _vec)) => {
-                        loop_micros = _myfloat;
-                        myinteger = _myinteger;
+                    // ========================================================================================== BLOCKS
+                    Ok((loop_speed_from_python, state_requested, _vec)) => {
+                        loop_micros = loop_speed_from_python;
+                        program_state = state_requested;
                         if _vec.len() == 3 {
                             println!("correct length");
                         }
                         local_vec = _vec;
-                        // _f and _i are the float and integer values from the tuple, respectively
-                        // You can add any mathematical operations here using _f and _i
+                        TRIGGER_STATE_CHANGE.store(false, Ordering::Relaxed);
                     }
                     Err(e) => println!("Failed to receive data: {}", e),
                 }
                 let loop_speed = Duration::from_micros(loop_micros);
                 set_error_code(3);
-                for duty_cycle in local_vec.iter().cycle() {
-                    let start = Instant::now();
-                    if EXIT_REQUEST.load(Ordering::Relaxed) {
-                        break;
-                    }
-                    println!("duty cycle: {}", *duty_cycle);
-                    let elapsed = start.elapsed();
-                    if let Some(sleep_duration) = loop_speed.checked_sub(elapsed) {
-                        // only sleep if there is a positive time duration after subtracting elapsed time
-                        // from the desired interval
-                        std::thread::sleep(sleep_duration);
+                // ===================================================================== BLOCKS UNTIL LOOP BREAK IS SENT
+                {
+                    for duty_cycle in local_vec.iter().cycle() {
+                        let start = Instant::now();
+                        if TRIGGER_STATE_CHANGE.load(Ordering::Relaxed) {
+                             break;
+                        }
+                        println!("duty cycle: {}", *duty_cycle);
+                        let elapsed = start.elapsed();
+                        if let Some(sleep_duration) = loop_speed.checked_sub(elapsed) {
+                            // only sleep if there is a positive time duration after subtracting elapsed time
+                            // from the desired interval
+                            std::thread::sleep(sleep_duration);
+                        }
                     }
                 }
-                // loop {
-                //     if EXIT_REQUEST.load(Ordering::Relaxed) {
-                //         break;
-                //     }
-                //     {
-                //         let value = shared_bool_clone.lock().unwrap();
-                //         println!("SHARED_BOOL value: {}", *value);
-                //     }
-                //     std::thread::sleep(loop_speed);
-                // }
                 println!("{style_bold}RUST: loop was cancelled, effectively ending this thread{style_reset}");
                 // After exiting the loop
                 if EXIT_REQUEST.load(Ordering::Relaxed) {
@@ -94,13 +88,14 @@ fn initialize_module() -> PyResult<()> {
                     println!("RUST: Element at index {}: {}", index, value);
                 }
                 println!(
-                    "{style_bold}RUST: my float was {} and integer {} {style_reset}",
-                    loop_micros, myinteger
+                    "{style_bold}RUST: my loop speed was {}us and state {} {style_reset}",
+                    loop_micros, program_state
                 );
                 if EXIT_REQUEST.load(Ordering::Relaxed) {
                     break;
                 }
-            }
+                //
+            } // outer loop, exit one time only
         });
     }
     Ok(())
@@ -126,6 +121,7 @@ fn clear_error_code() {
 
 #[pyfunction]
 fn send_value_py(val: (u64, u8, Vec<f64>)) {
+    TRIGGER_STATE_CHANGE.store(true, Ordering::SeqCst);
     {
         let tx: std::sync::MutexGuard<'_, mpsc::Sender<(u64, u8, Vec<f64>)>> =
             CHANNEL.0.lock().unwrap();
@@ -157,7 +153,17 @@ fn set_shared_bool(value: bool) {
 
 #[pyfunction]
 fn set_exit_request(value: bool) {
+    // to make sure we drop out of the outer loop
     EXIT_REQUEST.store(value, Ordering::SeqCst);
+
+    // to make sure we drop out of the inner loop, but only after making sure the outer one will exit
+    TRIGGER_STATE_CHANGE.store(value, Ordering::SeqCst);
+}
+
+#[pyfunction]
+fn trigger_state_change() {
+    // should store values before triggering the state change
+    TRIGGER_STATE_CHANGE.store(true, Ordering::SeqCst);
 }
 
 #[pyfunction]
@@ -170,14 +176,14 @@ fn get_exit_request_status() -> PyResult<bool> {
 #[pyfunction]
 fn is_module_started() -> PyResult<bool> {
     // checks if the spawned thread has started running
-    let started = THREAD_STARTED.lock().unwrap();
+    let started = THREAD_IS_STARTED.lock().unwrap();
     Ok(*started)
 }
 
 #[pyfunction]
 fn is_module_started_and_active() -> PyResult<bool> {
     // checks if the spawned thread has started running
-    let started = THREAD_STARTED.lock().unwrap();
+    let started = THREAD_IS_STARTED.lock().unwrap();
     Ok(*started && !EXIT_REQUEST.load(Ordering::SeqCst))
 }
 
@@ -189,6 +195,7 @@ fn testchannels(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_shared_bool, m)?)?;
     m.add_function(wrap_pyfunction!(initialize_module, m)?)?;
     m.add_function(wrap_pyfunction!(set_exit_request, m)?)?;
+    m.add_function(wrap_pyfunction!(trigger_state_change, m)?)?;
     m.add_function(wrap_pyfunction!(get_exit_request_status, m)?)?;
     m.add_function(wrap_pyfunction!(is_module_started, m)?)?;
     m.add_function(wrap_pyfunction!(is_module_started_and_active, m)?)?;

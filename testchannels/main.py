@@ -64,13 +64,18 @@ print(f"is module started {testchannels.is_module_started()}")
 testchannels.initialize_module()
 print(f"is module started {testchannels.is_module_started()}")
 print(f"exit reqeust status {testchannels.get_exit_request_status()}")
-print("go there ----")
+
+print("go there ----100000")
 success = safe_send((100000, 3))
-time.sleep(1.0)
-print("go there ---- again")
+
+time.sleep(2.0)
+print("go there ---- again 20000")
+success = safe_send((20000, 3, (2.0, 0.2, 200)))
+
+# testchannels.trigger_state_change()
 print(testchannels.get_shared_bool())
 print(testchannels.get_shared_bool())
-time.sleep(1.0)
+time.sleep(2.0)
 # initialized here as an error on purpose - to test the behavior
 testchannels.initialize_module()
 
